@@ -20,16 +20,21 @@ private:
   void calibrate()
   {
     printf("Calibrate throw engine start\n");
-    motors_set_speed(ROBOT_BALL_THROW_PORT, 30);
+    motors_set_speed(ROBOT_BALL_THROW_PORT, 20);
     SBYTE motor_speeds[4];
+    int sum_motor_speeds = 0;
     for (int i=0; i<4; i++) motor_speeds[i] = 1;
     int i = 0;
+    time_t starttime = time(NULL);
+    bool timeout = false;
     do
     {
       sleep_ms(100);
+      timeout = difftime(time(NULL), starttime) > 4.0; // Open arms shouldn't take more than 4 seconds, otherwise mechanical problems
       motor_speeds[(i++)%4] = motors_get_motor_speed(ROBOT_BALL_THROW_PORT);
-      printf("%d %d %d %d\n", motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3]);
-    } while ((abs(motor_speeds[0]) + abs(motor_speeds[1]) + abs(motor_speeds[2]) + abs(motor_speeds[3])) > 0);
+      printf("calibrate %d %d %d %d (timeout=%d)\n", motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3], timeout);
+      sum_motor_speeds = abs(motor_speeds[0]) + abs(motor_speeds[1]) + abs(motor_speeds[2]) + abs(motor_speeds[3]);
+    } while ((not timeout) and (sum_motor_speeds > 0));
     motors_reset_angle(ROBOT_BALL_THROW_PORT);
     motors_stop(ROBOT_BALL_THROW_PORT);
     is_down = false;
@@ -123,7 +128,7 @@ class CCatcher
 {
   bool is_open = false;
   bool is_closed = false;
-  
+  int direction = -1; // must have value '1' or '-1'
 public:
   
   bool open()
@@ -132,22 +137,39 @@ public:
     bool is_ok = true;
     if (not is_open)
     {
-      motors_set_speed(ROBOT_BALL_CATCH_PORT, 30);
-      SBYTE motor_speeds[4];
-      for (int i=0; i<4; i++) motor_speeds[i] = 1;
-      int i = 0;
-      int current_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
-      do
+      int try_count = 0;
+      is_ok = false;
+      while ((not is_ok) and (try_count++ < 2))
       {
-        sleep_ms(100);
-        motor_speeds[(i++)%4] = motors_get_motor_speed(ROBOT_BALL_CATCH_PORT);
-        printf("CCatcher.open %d %d %d %d\n", motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3]);
-      } while ((abs(motor_speeds[0]) + abs(motor_speeds[1]) + abs(motor_speeds[2]) + abs(motor_speeds[3])) > 0);
-      int reached_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
-      motors_reset_angle(ROBOT_BALL_CATCH_PORT);
-      motors_stop(ROBOT_BALL_CATCH_PORT);
-      // is_ok also true when started with half open arms
-      is_ok = (is_closed) ? (abs(current_angle - reached_angle) > 170) : true;
+        motors_set_speed(ROBOT_BALL_CATCH_PORT, direction * 30);
+        SBYTE motor_speeds[4];
+        int sum_motor_speeds = 0;
+        for (int i=0; i<4; i++) motor_speeds[i] = 1;
+        int i = 0;
+        int current_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
+        time_t starttime = time(NULL);
+        bool timeout = false;
+        do
+        {
+          sleep_ms(100);
+          timeout = difftime(time(NULL), starttime) > 3.0; // Open arms shouldn't take more than 3 seconds, otherwise mechanical problems
+          motor_speeds[(i++)%4] = motors_get_motor_speed(ROBOT_BALL_CATCH_PORT);
+          printf("CCatcher.open %d %d %d %d (timeout=%d)\n", motor_speeds[0], motor_speeds[1], motor_speeds[2], motor_speeds[3], timeout);
+          sum_motor_speeds = abs(motor_speeds[0]) + abs(motor_speeds[1]) + abs(motor_speeds[2]) + abs(motor_speeds[3]);
+        } while ((not timeout) and (sum_motor_speeds > 0));
+        int reached_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
+        motors_reset_angle(ROBOT_BALL_CATCH_PORT);
+        motors_stop(ROBOT_BALL_CATCH_PORT);
+        // is_ok also true when started with half open arms
+        int rotation = abs(current_angle - reached_angle);
+        is_ok = (timeout) ? false : ((is_closed) ? (rotation > 170) : (rotation > 10));
+        if (not is_ok and (try_count == 1))
+        {
+          printf("Trying to open arms with motor in reverse direction!\n");
+          direction *= -1; // Try once more with motor in another direction
+          sleep(1);
+        }
+      }
     }
     is_open = true;
     is_closed = false;
@@ -168,7 +190,7 @@ public:
     if (is_ok)
     {
       int current_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
-      motors_move_to_angle(ROBOT_BALL_CATCH_PORT, 80, -180, 1);
+      motors_move_to_angle(ROBOT_BALL_CATCH_PORT, 80, -direction * 180, 1);
       int reached_angle = motors_get_angle(ROBOT_BALL_CATCH_PORT);
       if (abs(reached_angle - current_angle) > 170)
       {
@@ -191,12 +213,13 @@ class CBallHandler: public CThrower, public CCatcher
 {
   
 public:
-  CBallHandler()
+  void init()
   {
-    open();
-    up();
-    down();
-    close();
+    printf("CBallHandler.init\n");
+    printf("\nOPEN\n"); open();
+    printf("\nUP\n"); up();
+    printf("\nDOWN\n"); down();
+    printf("\nCLOSE\n"); close();
   }
   
   bool trycatch(COLOR_CODE& color)
@@ -232,7 +255,7 @@ private:
     int elapsed = 0;
     int distance = 0;
     int percentage = 0;
-    int velocity = -45;
+    int velocity = -40;
     int actual_velocity_left = 0;
     int actual_velocity_right = 0;
     motors_set_speed(ROBOT_WHEEL_RIGHT_PORT, velocity);
@@ -290,7 +313,7 @@ public:
         //motors_stop(ROBOT_WHEEL_RIGHT_PORT);
         //motors_stop(ROBOT_WHEEL_LEFT_PORT);
         sleep(1);
-        command_turn_angle(-45);
+        command_turn_angle(-45, ROBOT_SPEED);
       }
     }
     printf("move_until_target done\n");
@@ -312,7 +335,7 @@ public:
     }
     if (degrees != 0)
     {
-      command_turn_angle(degrees);
+      command_turn_angle(degrees, ROBOT_SPEED);
     }
     printf("move_and_turn done (distance=%d, angle=%d)\n", distance_mm, degrees);
   }
@@ -325,6 +348,7 @@ void ball_initialize()
 {
   ballhandler = new CBallHandler();
   wheelhandler = new CWheelHandler();
+  ballhandler->init();
 }
 
 
@@ -341,7 +365,7 @@ void ball_terminate()
 
 void ball_execute(bool* keep_running)
 {
-  printf("ball execute start\n");
+  printf("\nBALL started\n\n");
   COLOR_CODE color;
   
   /*
@@ -433,6 +457,5 @@ void ball_execute(bool* keep_running)
     wheelhandler->move_and_turn(200, 90);
   }
   
-  printf("ball execute done\n");
-  return;
+  printf("\nBALL finished\n\n");
 }

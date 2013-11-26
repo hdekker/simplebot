@@ -12,6 +12,7 @@
 #include "command.h"
 #include "maze.h"
 #include "ball.h"
+#include "test.h"
 
 
 typedef void(*game_func)(bool*);
@@ -73,18 +74,47 @@ int main(int argc, const char* argv[])
   motors_initialize();
   command_initialize();
   ball_initialize();
-  sleep(5);
-  
-  if (sensors_is_button_pressed(BUTTON_CODE_LEFT))
+  for (int i=3; i>0; i--)
   {
-    // Run through maze
-    execute(maze_execute);
+    printf("Still %d seconds left to make your choice\n", i);
+    sleep(1);
   }
   
-  if (sensors_is_button_pressed(BUTTON_CODE_RIGHT))
+  if (sensors_is_button_pressed(BUTTON_CODE_UP))
+  { 
+    //
+    // Test scenario
+    //
+    if (sensors_is_button_pressed(BUTTON_CODE_LEFT))
+    {
+      execute(test_move);
+    }
+    else if (sensors_is_button_pressed(BUTTON_CODE_RIGHT))
+    {
+      execute(test_rotate);
+    }
+    else if (sensors_is_button_pressed(BUTTON_CODE_DOWN))
+    {
+      execute(test_shoot);
+    }
+    
+  }
+  else
   {
-    // Throw balls
-    execute(ball_execute);
+    //
+    // Normal scenario
+    //
+    if (sensors_is_button_pressed(BUTTON_CODE_LEFT))
+    {
+      // Run through maze
+      execute(maze_execute);
+    }
+    
+    if (sensors_is_button_pressed(BUTTON_CODE_RIGHT))
+    {
+      // Throw balls
+      execute(ball_execute);
+    }
   }
   
   ball_terminate();

@@ -58,7 +58,7 @@ void* check_button_thread_func(void* ptr)
         if (button_states[i])
         {
           button_states[i] = false;
-          printf("pressed released %d\n", i);
+          printf("released button %d\n", i);
         }
       }
     }
@@ -173,8 +173,6 @@ int sensors_initialize(bool* keep_running)
   ioctl(uart_file, UART_SET_CONN, &DevCon);
   
   pthread_create(&thread, NULL, check_button_thread_func, (void*) keep_running);
-  
-  sensors_clear_buttons_pressed();
   
   return 0;
   

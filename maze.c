@@ -25,20 +25,27 @@ int derivative;
 bool must_turn_left = false;    //0 = no turn right, 1 = turn right
 
 
+void set_speed(int port, int speed)
+{
+  motors_set_speed(port, -speed);
+}
+
+
 void move_forward(int duration_ms, int speed)
 {
-     motors_set_speed(ROBOT_WHEEL_LEFT_PORT, speed);
-     motors_set_speed(ROBOT_WHEEL_RIGHT_PORT, speed);
+     set_speed(ROBOT_WHEEL_LEFT_PORT, speed);
+     set_speed(ROBOT_WHEEL_RIGHT_PORT, speed);
      sleep_ms(duration_ms);
 }
 
+
 void move_away_from_wall()
 {
-     motors_set_speed(ROBOT_WHEEL_LEFT_PORT, 0);
-     motors_set_speed(ROBOT_WHEEL_RIGHT_PORT, 50);
+     set_speed(ROBOT_WHEEL_LEFT_PORT, 0);
+     set_speed(ROBOT_WHEEL_RIGHT_PORT, 50);
      sleep_ms(400);
-     motors_set_speed(ROBOT_WHEEL_LEFT_PORT, 50);
-     motors_set_speed(ROBOT_WHEEL_RIGHT_PORT, 0);
+     set_speed(ROBOT_WHEEL_LEFT_PORT, 50);
+     set_speed(ROBOT_WHEEL_RIGHT_PORT, 0);
      sleep_ms(200);  
 }
 
@@ -51,8 +58,8 @@ void turn_right(int speed)
   
   if (right_distance2 > 150)
   {
-  motors_set_speed(portA, speed+15);
-  motors_set_speed(portB, 15);
+  set_speed(portA, speed+15);
+  set_speed(portB, 15);
   sleep_ms(50);
   }
 }
@@ -65,8 +72,8 @@ bool turn_left(int speed)
   bool keep_turning2; 
   int forward_distance = command_get_forward_distance_mm();
   
-  motors_set_speed(portA, -30);
-  motors_set_speed(portB, 30+speed);
+  set_speed(portA, -30);
+  set_speed(portB, 30+speed);
   sleep_ms(500);
 
     forward_distance = command_get_forward_distance_mm();
@@ -87,6 +94,8 @@ bool turn_left(int speed)
 
 void maze_execute(bool* keep_running)
 {
+  printf("\nMAZE started\n\n");
+  
   // 5000ms and speed 50km/h
   move_forward(5000, 50);
   
@@ -145,14 +154,16 @@ void maze_execute(bool* keep_running)
       if ( Motor_speed_right < -100) { Motor_speed_right = -100; }
       
       // Set motor
-      motors_set_speed(ROBOT_WHEEL_LEFT_PORT, Motor_speed_left);
-      motors_set_speed(ROBOT_WHEEL_RIGHT_PORT, Motor_speed_right);
+      set_speed(ROBOT_WHEEL_LEFT_PORT, Motor_speed_left);
+      set_speed(ROBOT_WHEEL_RIGHT_PORT, Motor_speed_right);
       
       lasterror = error;
       sleep_ms(25); // Prevent busy loop
     }
   }
  
-  printf("maze_execute stopping...\n");
+  printf("\nMAZE stopping...\n\n");
   command_move_stop();
+  
+  printf("\nMAZE finished\n\n");
 }
