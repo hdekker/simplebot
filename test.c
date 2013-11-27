@@ -4,11 +4,17 @@
 #include "sensors.h"
 #include "common.h"
 #include "command.h"
-
+#include "ball.h"
 
 void test_move(bool* keep_running)
 {
   printf("\nTEST_MOVE started\n");
+  printf("\n*****************************************************\n");
+  printf("UP:     Increase 'speed'\n");
+  printf("DOWN:   Decrease 'speed'\n");
+  printf("LEFT:   Move backward\n");
+  printf("RIGHT:  Move forward\n");
+  printf("*****************************************************\n\n");
   
   sensors_clear_buttons_pressed();
   int speed = 50;
@@ -57,7 +63,13 @@ void test_move(bool* keep_running)
 void test_rotate(bool* keep_running)
 {
   printf("\nTEST_ROTATE started\n");
-
+  printf("\n*****************************************************\n");
+  printf("LEFT:   Change 'angle'\n");
+  printf("RIGHT:  Change 'speed'\n");
+  printf("UP:     Rotate anti clockwise\n");
+  printf("DOWN:   Rotate clockwise\n");
+  printf("*****************************************************\n\n");
+  
   sensors_clear_buttons_pressed();
   int angle = 180;
   int speed = 40;
@@ -106,6 +118,78 @@ void test_rotate(bool* keep_running)
 void test_shoot(bool* keep_running)
 {
   printf("\nTEST_SHOOT started\n");
+  printf("\n*****************************************************\n");
+  printf("LEFT:   Catch ball\n");
+  printf("RIGHT:  Shoot ball\n");
+  printf("UP:     Catch and Shoot, until UP pressed again\n");
+  printf("DOWN:   Move until target found\n");
+  printf("*****************************************************\n\n");
+  
+  sensors_clear_buttons_pressed();
+  CBallHandler ballhandler;
+  CWheelHandler wheelhandler;
+  
+  while (*keep_running)
+  {
+    if (sensors_is_button_pressed(BUTTON_CODE_LEFT))
+    {
+      printf("Try catching ball\n");
+      sensors_clear_buttons_pressed();
+      COLOR_CODE color;
+      bool ball_detected = ballhandler.trycatch(color);
+      if (ball_detected)
+      {
+        printf("\nCaught ball. Color=%d\n\n", color);
+      }
+      else
+      {
+        printf("\nNo blue, green, yellow, or red ball. Color=%d\n\n", color);
+      }
+    }
+    
+    if (sensors_is_button_pressed(BUTTON_CODE_RIGHT))
+    {
+      printf("Try catching ball\n");
+      sensors_clear_buttons_pressed();
+      bool shot = ballhandler.tryshoot();
+      printf("\nShoot result %d\n\n", shot);
+    }
 
+    if (sensors_is_button_pressed(BUTTON_CODE_UP))
+    {
+      sensors_clear_buttons_pressed();
+      while (not sensors_is_button_pressed(BUTTON_CODE_UP))
+      {
+        COLOR_CODE color;
+        bool ball_detected = ballhandler.trycatch(color);
+        if (ball_detected)
+        {
+          printf("Caught ball. Color=%d\n", color);
+          if (ballhandler.tryshoot())
+          {
+            printf("Shot the ball. Bulls eye?\n");
+          }
+          else
+          {
+            printf("Shooting failed\n");
+          }
+        }
+        else
+        {
+          printf("No blue, green, yellow, or red ball. Color=%d\n", color);
+        }
+        sleep(3);
+      }
+    }
+    
+    if (sensors_is_button_pressed(BUTTON_CODE_DOWN))
+    {
+      sensors_clear_buttons_pressed();
+      wheelhandler.move_until_target();
+    }
+    
+    sleep_ms(10);
+  }
+  
   printf("\nTEST_SHOOT finished\n\n");
 }
